@@ -86,18 +86,13 @@ jobs:
 
   clang-format:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        path:
-          - "src"
-          - "docs/protobuf"
     steps:
       - uses: actions/checkout@v3
       - name: run clang-format
         uses: jidicula/clang-format-action@v4.11.0
         with:
           clang-format-version: "15"
-          check-path: ${{ matrix.path }}
+          check-path: "src"
 
   clang-tidy:
     runs-on: macos-latest

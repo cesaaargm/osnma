@@ -93,6 +93,7 @@ jobs:
         with:
           clang-format-version: "15"
           check-path: "src"
+          exclude-regex: '^.*\.cu$'
 
   clang-tidy:
     runs-on: macos-latest

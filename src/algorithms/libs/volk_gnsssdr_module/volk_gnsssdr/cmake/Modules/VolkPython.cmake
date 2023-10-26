@@ -162,7 +162,7 @@ else()
                             string(FIND ${PYTHON_EXECUTABLE} "python3" is_python3)
                             if(is_python3 GREATER -1)
                                 set(PYTHON_VERSION_MAJOR "3")
-                                set(PYTHON_VERSION_STRING "3")
+                                set(PYTHON_VERSION_STRING "3.10") # ?
                             else()
                                 set(PYTHON_VERSION_MAJOR "2")
                                 set(PYTHON_VERSION_STRING "2.7")

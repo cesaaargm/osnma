@@ -74,6 +74,7 @@ private:
     void print_pubkey_hex(gnutls_pubkey_t);
     bool pubkey_copy(gnutls_pubkey_t src, gnutls_pubkey_t* dest);
 #endif
+    bool encode_ecdsa_der(const std::vector<uint8_t>& r, const std::vector<uint8_t>& s, std::vector<uint8_t>& der);
     std::vector<uint8_t> d_x_4_0;
     std::vector<uint8_t> d_x_3_1;
     std::vector<uint8_t> d_x_2_1;

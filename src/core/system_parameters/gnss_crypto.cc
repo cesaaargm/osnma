@@ -1,7 +1,8 @@
 /*!
  * \file gnss_crypto.cc
- * \brief Class for computing cryptografic functions
- * \author Carles Fernandez, 2023. cfernandez(at)cttc.es
+ * \brief Class for computing cryptographic functions
+ * \author Carles Fernandez, 2023-2024. cfernandez(at)cttc.es
+ *   Cesare Ghionoiu Martinez, 2023-2024. c.ghionoiu-martinez@tu-braunschweig.de
  *
  *
  * -----------------------------------------------------------------------------
@@ -9,7 +10,7 @@
  * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * Copyright (C) 2010-2023  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2024  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -----------------------------------------------------------------------------
@@ -20,9 +21,9 @@
 #include <pugixml.hpp>
 #include <cstddef>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
-#include <sstream>
 
 #if USE_OPENSSL_FALLBACK
 #include <openssl/cmac.h>
@@ -30,10 +31,8 @@
 #include <openssl/hmac.h>
 #include <openssl/pem.h>
 #if USE_OPENSSL_3
-#include <iomanip>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
-#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/param_build.h>
@@ -41,18 +40,17 @@
 #else
 #include <openssl/sha.h>
 #endif
-#else
+#else  // GnuTLS
 #include <cstring>
 #include <gnutls/abstract.h>
 #include <gnutls/crypto.h>
 #include <gnutls/x509.h>
-#include <iomanip>
 #endif
 
 Gnss_Crypto::Gnss_Crypto(const std::string& pemFilePath, const std::string& merkleTreePath)
 {
 #if USE_OPENSSL_FALLBACK
-#else
+#else  // GnuTLS
     gnutls_global_init();
 #endif
     readPublicKeyFromPEM(pemFilePath);
@@ -70,7 +68,7 @@ Gnss_Crypto::~Gnss_Crypto()
             EC_KEY_free(d_PublicKey);
         }
 #endif
-#else  // GNU-TLS
+#else  // GnuTLS
     if (d_PublicKey != NULL)
         {
             gnutls_pubkey_deinit(d_PublicKey);
@@ -85,22 +83,9 @@ bool Gnss_Crypto::have_public_key() const
 {
 #if USE_OPENSSL_FALLBACK
     return (d_PublicKey != nullptr);
-#else
+#else  // GnuTLS
     return (d_PublicKey != gnutls_pubkey_t{});
 #endif
-}
-
-
-std::string Gnss_Crypto::convert_to_utf8_str(const std::vector<uint8_t>& input) const
-{
-    const char hex[] = "0123456789ABCDEF";
-    std::string str(input.size() * 2, '0');
-    for (size_t i = 0; i < input.size(); i++)
-        {
-            str[(i * 2) + 0] = hex[((input[i] & 0xF0) >> 4)];
-            str[(i * 2) + 1] = hex[((input[i] & 0x0F))];
-        }
-    return str;
 }
 
 
@@ -239,11 +224,6 @@ void Gnss_Crypto::read_merkle_xml(const std::string& merkleFilePath)
 }
 
 
-// void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publickey)
-// {
-// }
-
-
 std::vector<uint8_t> Gnss_Crypto::computeSHA256(const std::vector<uint8_t>& input) const
 {
     std::vector<uint8_t> output(32);  // SHA256 hash size
@@ -276,7 +256,7 @@ std::vector<uint8_t> Gnss_Crypto::computeSHA256(const std::vector<uint8_t>& inpu
     SHA256_Update(&sha256Context, input.data(), input.size());
     SHA256_Final(output.data(), &sha256Context);
 #endif
-#else
+#else  // GnuTLS
     std::vector<uint8_t> output_aux(32);
     gnutls_hash_hd_t hashHandle;
     gnutls_hash_init(&hashHandle, GNUTLS_DIG_SHA256);
@@ -304,7 +284,7 @@ std::vector<uint8_t> Gnss_Crypto::computeSHA3_256(const std::vector<uint8_t>& in
 #else
     // SHA3-256 not implemented in OpenSSL < 3.0
 #endif
-#else
+#else  // GnuTLS
     std::vector<uint8_t> output_aux(32);
     gnutls_hash_hd_t hashHandle;
     gnutls_hash_init(&hashHandle, GNUTLS_DIG_SHA3_256);
@@ -361,7 +341,7 @@ std::vector<uint8_t> Gnss_Crypto::computeHMAC_SHA_256(const std::vector<uint8_t>
     hmac.resize(hmacLen);
     output = hmac;
 #endif
-#else
+#else  // GnuTLS
     std::vector<uint8_t> output_aux(32);
     gnutls_hmac_hd_t hmac;
     gnutls_hmac_init(&hmac, GNUTLS_MAC_SHA256, key.data(), key.size());
@@ -424,7 +404,7 @@ std::vector<uint8_t> Gnss_Crypto::computeCMAC_AES(const std::vector<uint8_t>& ke
 
     output = mac;
 #endif
-#else
+#else  // GnuTLS
     gnutls_cipher_hd_t cipher;
     std::vector<uint8_t> mac(16);
     std::vector<uint8_t> message = input;
@@ -474,7 +454,7 @@ void Gnss_Crypto::readPublicKeyFromPEM(const std::string& pemFilePath)
             std::cerr << "OpenSSL: error reading the Public Key from file " << pemFilePath << ". Aborting import" << std::endl;
             return;
         }
-#else
+#else  // GnuTLS
     // Import the PEM data
     gnutls_datum_t pemDatum = {const_cast<unsigned char*>(reinterpret_cast<unsigned char*>(pemContent.data())), static_cast<unsigned int>(pemContent.size())};
     gnutls_pubkey_t pubkey;
@@ -495,70 +475,21 @@ void Gnss_Crypto::readPublicKeyFromPEM(const std::string& pemFilePath)
     gnutls_pubkey_deinit(pubkey);
 #endif
     std::cout << "Public key successfully read from file " << pemFilePath << std::endl;
-    // print_pubkey_hex(d_PublicKey);
 }
 
 
-bool Gnss_Crypto::encode_ecdsa_der(const std::vector<uint8_t>& r, const std::vector<uint8_t>& s, std::vector<uint8_t>& der)
-{
-#if USE_OPENSSL_FALLBACK
-    return true;
-#else
-    size_t r_size = r.size();
-    size_t s_size = s.size();
-
-    size_t total_size = 2 + r_size + 2 + s_size;  // 2 bytes each for lengths
-    if (r_size > 127) total_size++;               // Extra byte for r length if > 127
-    if (s_size > 127) total_size++;               // Extra byte for s length if > 127
-
-    size_t der_size = 2 + total_size;  // 2 bytes for sequence tag and length
-    if (total_size > 127) der_size++;  // Extra byte for total length if > 127
-
-    der.clear();
-    der.reserve(der_size);
-
-    // DER sequence tag
-    der.push_back(0x30);
-    if (total_size <= 127)
-        {
-            der.push_back(static_cast<uint8_t>(total_size));
-        }
-    else
-        {
-            der.push_back(0x81);
-            der.push_back(static_cast<uint8_t>(total_size));
-        }
-
-    // DER encoded r
-    der.push_back(0x02);
-    if (r_size <= 127)
-        {
-            der.push_back(static_cast<uint8_t>(r_size));
-        }
-    else
-        {
-            der.push_back(0x81);
-            der.push_back(static_cast<uint8_t>(r_size));
-        }
-    der.insert(der.end(), r.begin(), r.end());
-    return true;
-#endif
-}
-
-
-bool Gnss_Crypto::verify_signature(const std::vector<uint8_t>& message, const std::vector<uint8_t>& signature)
+bool Gnss_Crypto::verify_signature(const std::vector<uint8_t>& message, const std::vector<uint8_t>& signature) const
 {
     std::vector<uint8_t> digest = this->computeSHA256(message);
     if (!have_public_key())
         {
-            std::cerr << "Galileo OSNMA::Kroot verification error::Public key not available" << std::endl;
+            std::cerr << "Galileo OSNMA KROOT verification error: Public key is not available" << std::endl;
             return false;
         }
     bool success = false;
 #if USE_OPENSSL_FALLBACK
 #if USE_OPENSSL_3
     EVP_PKEY_CTX* ctx;
-    // print_pubkey_hex(d_PublicKey);
     ctx = EVP_PKEY_CTX_new(d_PublicKey, nullptr);
     bool do_operation = true;
 
@@ -566,7 +497,7 @@ bool Gnss_Crypto::verify_signature(const std::vector<uint8_t>& message, const st
         {
             do_operation = false;
         }
-    // convert raw signature into DER format, needed for verify_signature
+    // convert raw signature into DER format
     size_t half_size = signature.size() / 2;
     std::vector<uint8_t> raw_r(signature.begin(), signature.begin() + half_size);
     std::vector<uint8_t> raw_s(signature.begin() + half_size, signature.end());
@@ -585,7 +516,7 @@ bool Gnss_Crypto::verify_signature(const std::vector<uint8_t>& message, const st
     if (ECDSA_SIG_set0(sig, r, s) != 1)
         {
             std::cerr << "Failed to set R and S values in ECDSA_SIG" << std::endl;
-            ECDSA_SIG_free(sig);  // Free the ECDSA_SIG struct as it's no longer needed
+            ECDSA_SIG_free(sig);  // Free the ECDSA_SIG struct as it is no longer needed
             return false;
         }
 
@@ -644,8 +575,7 @@ bool Gnss_Crypto::verify_signature(const std::vector<uint8_t>& message, const st
         }
 
 #endif
-#else
-    // GnuTLS
+#else  // GnuTLS
     size_t half_size = signature.size() / 2;
     std::vector<uint8_t> raw_r(signature.begin(), signature.begin() + half_size);
     std::vector<uint8_t> raw_s(signature.begin() + half_size, signature.end());
@@ -670,7 +600,6 @@ bool Gnss_Crypto::verify_signature(const std::vector<uint8_t>& message, const st
         {
             std::cerr << "GnuTLS: message authentication failed: " << gnutls_strerror(ret) << std::endl;
         }
-
 #endif
     return success;
 }
@@ -729,61 +658,31 @@ void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publicKey)
 
     if (!pkey)
         {
-            std::cerr << "OpenSSL: error setting the public key "
-                      << ". Aborting import" << std::endl;
+            std::cerr << "OpenSSL: error setting the public key." << std::endl;
             return;
         }
-    // print_pubkey_hex(pkey);
 
     if (!pubkey_copy(pkey, &d_PublicKey))
-        return
+        {
+            return;
+        }
 
-            EVP_PKEY_free(pkey);
-#else
-    //    // GNU-TLS
-    //    gnutls_global_init();
-    //
-    //    // debug info gnu-tls remove when not needed anymore!
-    //    gnutls_global_set_log_level(9);
-    //    gnutls_global_set_log_function(Gnss_Crypto::my_log_func);
-
+    EVP_PKEY_free(pkey);
+#else  // GnuTLS
     gnutls_pubkey_t pubkey;
     gnutls_datum_t pemDatum = {const_cast<unsigned char*>(publicKey.data()), static_cast<unsigned int>(publicKey.size())};
     gnutls_pubkey_init(&pubkey);
     int ret = gnutls_pubkey_import(pubkey, &pemDatum, GNUTLS_X509_FMT_PEM);
-    // ret = gnutls_pubkey_import_x509_raw(pubkey, &pemDatum,GNUTLS_X509_FMT_PEM,0);
     if (ret != GNUTLS_E_SUCCESS)
         {
             gnutls_pubkey_deinit(pubkey);
-            std::cerr << "GnuTLS: error setting the public key "
-                      << ". Aborting import" << std::endl;
+            std::cerr << "GnuTLS: error setting the public key" << std::endl;
             std::cerr << "GnuTLS error: " << gnutls_strerror(ret) << std::endl;
             return;
         }
-    // d_PublicKey = pubkey;
     pubkey_copy(pubkey, &d_PublicKey);
-    //    std::cout << "pubkey: " << std::endl;
-    //    print_pubkey_hex(pubkey);
-    //    std::cout << "d_PublicKey before : " << std::endl;
-    //    print_pubkey_hex(d_PublicKey);
     gnutls_pubkey_deinit(pubkey);
-//    std::cout << "d_PublicKey after: " << std::endl;
-//    print_pubkey_hex(d_PublicKey);
-
-//    gnutls_global_deinit();
 #endif
-}
-
-
-std::vector<uint8_t> Gnss_Crypto::get_public_key()
-{
-#if USE_OPENSSL_FALLBACK
-    // TODO
-#else
-// GNU-TLS
-// TODO
-#endif
-    return {};
 }
 
 
@@ -803,9 +702,6 @@ bool Gnss_Crypto::pubkey_copy(EVP_PKEY* src, EVP_PKEY** dest)
             BIO_free(mem_bio);
             return false;
         }
-
-    // Add a null-terminator to the data in the memory buffer
-    // BIO_write(mem_bio, "\0", 1);
 
     // Read the data from the memory buffer
     char* bio_data;
@@ -835,51 +731,57 @@ bool Gnss_Crypto::pubkey_copy(EVP_PKEY* src, EVP_PKEY** dest)
     return true;
 }
 
+#else  // GnuTLS-specific functions
 
-void Gnss_Crypto::print_pubkey_hex(EVP_PKEY* pubkey)
+bool Gnss_Crypto::encode_ecdsa_der(const std::vector<uint8_t>& r, const std::vector<uint8_t>& s, std::vector<uint8_t>& der) const
 {
-    BIO* mem_bio = BIO_new(BIO_s_mem());
-    if (!mem_bio)
+    size_t r_size = r.size();
+    size_t s_size = s.size();
+
+    size_t total_size = 2 + r_size + 2 + s_size;  // 2 bytes each for lengths
+    if (r_size > 127) total_size++;               // Extra byte for r length if > 127
+    if (s_size > 127) total_size++;               // Extra byte for s length if > 127
+
+    size_t der_size = 2 + total_size;  // 2 bytes for sequence tag and length
+    if (total_size > 127) der_size++;  // Extra byte for total length if > 127
+
+    der.clear();
+    der.reserve(der_size);
+
+    // DER sequence tag
+    der.push_back(0x30);
+    if (total_size <= 127)
         {
-            std::cerr << "Failed to create new memory BIO\n";
-            return;
+            der.push_back(static_cast<uint8_t>(total_size));
+        }
+    else
+        {
+            der.push_back(0x81);
+            der.push_back(static_cast<uint8_t>(total_size));
         }
 
-    if (!PEM_write_bio_PUBKEY(mem_bio, pubkey))
+    // DER encoded r
+    der.push_back(0x02);
+    if (r_size <= 127)
         {
-            std::cerr << "Failed to write public key to BIO\n";
-            BIO_free(mem_bio);
-            return;
+            der.push_back(static_cast<uint8_t>(r_size));
         }
-
-    BUF_MEM* mem_ptr;
-    BIO_get_mem_ptr(mem_bio, &mem_ptr);  // Fetch the underlying BUF_MEM structure from the BIO.
-
-    std::stringstream ss;
-
-    // Iterate through each byte in mem_ptr->data and print its hex value.
-    for (size_t i = 0; i < mem_ptr->length; i++)
+    else
         {
-            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(static_cast<unsigned char>(mem_ptr->data[i]));
+            der.push_back(0x81);
+            der.push_back(static_cast<uint8_t>(r_size));
         }
-
-    // std::cout << "Public key in hex format: 0x" << ss.str() << std::endl;
-
-    BIO_free(mem_bio);
+    der.insert(der.end(), r.begin(), r.end());
+    return true;
 }
-#else  // gnutls-specific functions
-void Gnss_Crypto::my_log_func(int level, const char* msg)
-{
-    fprintf(stderr, "<GnuTLS %d> %s", level, msg);
-}
+
 
 bool Gnss_Crypto::pubkey_copy(gnutls_pubkey_t src, gnutls_pubkey_t* dest)
 {
     gnutls_datum_t key_datum;
-    int ret;
 
     // Export the public key from src to memory
-    ret = gnutls_pubkey_export2(src, GNUTLS_X509_FMT_PEM, &key_datum);
+    int ret = gnutls_pubkey_export2(src, GNUTLS_X509_FMT_PEM, &key_datum);
     if (ret < 0)
         {
             gnutls_free(key_datum.data);
@@ -905,33 +807,5 @@ bool Gnss_Crypto::pubkey_copy(gnutls_pubkey_t src, gnutls_pubkey_t* dest)
         }
 
     return true;
-}
-
-
-void Gnss_Crypto::print_pubkey_hex(gnutls_pubkey_t pubkey)
-{
-    gnutls_datum_t key_datum;
-    int ret;
-
-    // Export the public key from pubkey to memory in DER format
-    ret = gnutls_pubkey_export2(pubkey, GNUTLS_X509_FMT_PEM, &key_datum);
-    if (ret < 0)
-        {
-            std::cerr << "Failed to export public key: " << gnutls_strerror(ret) << std::endl;
-            return;
-        }
-
-    std::stringstream ss;
-
-    // Iterate through each byte in key_datum.data and print its hex value
-    for (unsigned int i = 0; i < key_datum.size; ++i)
-        {
-            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<std::uint32_t>(key_datum.data[i]);
-        }
-
-    std::cout << "Public key in hex format: 0x" << ss.str() << std::endl;
-
-    // Free the memory allocated to key_datum.data
-    gnutls_free(key_datum.data);
 }
 #endif

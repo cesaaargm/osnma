@@ -187,6 +187,7 @@ function(link_to_crypto_dependencies target)
             PUBLIC
                 ${GNUTLS_LIBRARIES}
                 ${GNUTLS_OPENSSL_LIBRARY}
+            PRIVATE
                 Gmp::gmp
         )
         target_include_directories(${target}

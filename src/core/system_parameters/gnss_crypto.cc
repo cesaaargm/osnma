@@ -27,6 +27,7 @@
 
 #if USE_GNUTLS_FALLBACK
 #include <cstring>
+#include <gmpxx.h>
 #include <gnutls/crypto.h>
 #include <gnutls/x509.h>
 #else  // OpenSSL
@@ -1326,7 +1327,7 @@ bool Gnss_Crypto::pubkey_copy(gnutls_pubkey_t src, gnutls_pubkey_t* dest)
 }
 
 
-bool Gnss_Crypto::tonelli_shanks(mpz_t& res, const mpz_t& n, const mpz_t& p) const
+bool tonelli_shanks(mpz_t& res, const mpz_t& n, const mpz_t& p)
 {
     if (mpz_legendre(n, p) != 1)
         {

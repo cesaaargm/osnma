@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 #if USE_GNUTLS_FALLBACK
-#include <gmpxx.h>
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
 #else  // OpenSSL
@@ -80,7 +79,6 @@ private:
     bool convert_raw_to_der_ecdsa(const std::vector<uint8_t>& raw_signature, std::vector<uint8_t>& der_signature) const;
     std::vector<uint8_t> convert_from_hex_str(const std::string& input) const;
 #if USE_GNUTLS_FALLBACK
-    bool tonelli_shanks(mpz_t& res, const mpz_t& n, const mpz_t& p) const;
     void decompress_public_key_secp256r1(const std::vector<uint8_t>& compressed_key, std::vector<uint8_t>& x, std::vector<uint8_t>& y) const;
     void decompress_public_key_secp521r1(const std::vector<uint8_t>& compressed_key, std::vector<uint8_t>& x, std::vector<uint8_t>& y) const;
     bool pubkey_copy(gnutls_pubkey_t src, gnutls_pubkey_t* dest);

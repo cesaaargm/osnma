@@ -195,14 +195,15 @@ bool Gnss_Crypto::store_public_key(const std::string& pubKeyFilePath) const
     return true;
 }
 
+
 bool Gnss_Crypto::verify_signature_ecdsa_p256(const std::vector<uint8_t>& message, const std::vector<uint8_t>& signature) const
 {
-    std::vector<uint8_t> digest = this->compute_SHA_256(message);
     if (!have_public_key())
         {
             LOG(WARNING) << "Galileo OSNMA KROOT verification error: Public key is not available";
             return false;
         }
+    std::vector<uint8_t> digest = this->compute_SHA_256(message);
     bool success = false;
 #if USE_GNUTLS_FALLBACK
 #if HAVE_GNUTLS_SIGN_ECDSA_SHA256
@@ -847,7 +848,6 @@ std::vector<uint8_t> Gnss_Crypto::get_merkle_root() const
 void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publicKey)
 {
 #if USE_GNUTLS_FALLBACK
-    // TODO - changed to import a compressed ECC key, either P256 or P521, but have not tested it yet
     gnutls_pubkey_t pubkey{};
     gnutls_datum_t x_coord;
     gnutls_datum_t y_coord;
@@ -921,8 +921,7 @@ void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publicKey)
     EVP_PKEY_CTX_free(ctx);
     OSSL_PARAM_free(params);
     OSSL_PARAM_BLD_free(param_bld);
-#else
-    EVP_PKEY* pkey = nullptr;    // Generic public key type
+#else  // OpenSSL 1.x
     EC_KEY* ec_key = nullptr;    // ECC Key pair
     EC_POINT* point = nullptr;   // Represents the point in the EC the public key belongs to
     EC_GROUP* group = nullptr;   // Defines the curve the public key belongs
@@ -967,11 +966,11 @@ void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publicKey)
         {
             return;
         }
-    if (!pubkey_copy(ec_pkey, &d_PublicKey))
+    if (!pubkey_copy(ec_key, &d_PublicKey))
         {
             return;
         }
-    EC_KEY_free(ec_pkey);
+    EC_KEY_free(ec_key);
     EC_POINT_free(point);
     EC_GROUP_free(group);
 #endif  // OpenSSL 1.x

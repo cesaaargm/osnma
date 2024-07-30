@@ -849,8 +849,6 @@ void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publicKey)
 {
 #if USE_GNUTLS_FALLBACK
     gnutls_pubkey_t pubkey{};
-    gnutls_datum_t x_coord;
-    gnutls_datum_t y_coord;
     gnutls_ecc_curve_t curve;
     std::vector<uint8_t> x;
     std::vector<uint8_t> y;
@@ -869,21 +867,17 @@ void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publicKey)
         }
     else
         {
-            LOG(WARNING) << "GnuTLS: Unknown key length";
+            LOG(WARNING) << "GnuTLS: Invalid public key size";
             return;
         }
 
-    x_coord.data = x.data();
-    x_coord.size = x.size();
-    y_coord.data = y.data();
-    y_coord.size = y.size();
+    gnutls_datum_t x_coord = {x.data(), static_cast<unsigned int>(x.size())};
+    gnutls_datum_t y_coord = {y.data(), static_cast<unsigned int>(y.size())};
 
     int ret = gnutls_pubkey_import_ecc_raw(pubkey, curve, &x_coord, &y_coord);
     if (ret != GNUTLS_E_SUCCESS)
         {
             gnutls_pubkey_deinit(pubkey);
-            std::cerr << "GnuTLS: error setting the public key" << std::endl;
-            std::cerr << "GnuTLS error: " << gnutls_strerror(ret) << std::endl;
             LOG(WARNING) << "GnuTLS: error setting the OSNMA public key: " << gnutls_strerror(ret);
             return;
         }
@@ -910,18 +904,17 @@ void Gnss_Crypto::set_public_key(const std::vector<uint8_t>& publicKey)
         {
             return;
         }
-    else
+
+    if (!pubkey_copy(pkey, &d_PublicKey))
         {
-            if (!pubkey_copy(pkey, &d_PublicKey))
-                {
-                    return;
-                }
+            return;
         }
+
     EVP_PKEY_free(pkey);
     EVP_PKEY_CTX_free(ctx);
     OSSL_PARAM_free(params);
     OSSL_PARAM_BLD_free(param_bld);
-#else  // OpenSSL 1.x
+#else   // OpenSSL 1.x
     EC_KEY* ec_key = nullptr;    // ECC Key pair
     EC_POINT* point = nullptr;   // Represents the point in the EC the public key belongs to
     EC_GROUP* group = nullptr;   // Defines the curve the public key belongs
@@ -1331,100 +1324,8 @@ bool Gnss_Crypto::pubkey_copy(gnutls_pubkey_t src, gnutls_pubkey_t* dest)
 
     return true;
 }
-#else  // OpenSSL
-#if USE_OPENSSL_3
-bool Gnss_Crypto::pubkey_copy(EVP_PKEY* src, EVP_PKEY** dest)
-{
-    // Open a memory buffer
-    BIO* mem_bio = BIO_new(BIO_s_mem());
-    if (mem_bio == nullptr)
-        {
-            return false;
-        }
-
-    // Export the public key from src into the memory buffer in PEM format
-    if (!PEM_write_bio_PUBKEY(mem_bio, src))
-        {
-            BIO_free(mem_bio);
-            return false;
-        }
-
-    // Read the data from the memory buffer
-    char* bio_data;
-    int64_t data_len = BIO_get_mem_data(mem_bio, &bio_data);
-
-    // Create a new memory buffer and load the data into it
-    BIO* mem_bio2 = BIO_new_mem_buf(bio_data, data_len);
-    if (mem_bio2 == nullptr)
-        {
-            BIO_free(mem_bio);
-            return false;
-        }
-
-    // Read the public key from the new memory buffer
-    *dest = PEM_read_bio_PUBKEY(mem_bio2, nullptr, nullptr, nullptr);
-    if (*dest == nullptr)
-        {
-            BIO_free(mem_bio);
-            BIO_free(mem_bio2);
-            return false;
-        }
-
-    // Clean up
-    BIO_free(mem_bio);
-    BIO_free(mem_bio2);
-
-    return true;
-}
-#else   // OpenSSL 1.x
-bool Gnss_Crypto::pubkey_copy(EC_KEY* src, EC_KEY** dest)
-{
-    // Open a memory buffer
-    BIO* mem_bio = BIO_new(BIO_s_mem());
-    if (mem_bio == nullptr)
-        {
-            return false;
-        }
-
-    // Export the public key from src into the memory buffer in PEM format
-    if (!PEM_write_bio_EC_PUBKEY(mem_bio, src))
-        {
-            BIO_free(mem_bio);
-            return false;
-        }
-
-    // Read the data from the memory buffer
-    char* bio_data;
-    long data_len = BIO_get_mem_data(mem_bio, &bio_data);
-
-    // Create a new memory buffer and load the data into it
-    BIO* mem_bio2 = BIO_new_mem_buf(bio_data, data_len);
-    if (mem_bio2 == nullptr)
-        {
-            BIO_free(mem_bio);
-            return false;
-        }
-
-    // Read the public key from the new memory buffer
-    *dest = PEM_read_bio_EC_PUBKEY(mem_bio2, nullptr, nullptr, nullptr);
-    if (*dest == nullptr)
-        {
-            BIO_free(mem_bio);
-            BIO_free(mem_bio2);
-            return false;
-        }
-
-    // Clean up
-    BIO_free(mem_bio);
-    BIO_free(mem_bio2);
-
-    return true;
-}
-#endif  // OpenSSL
-#endif
 
 
-#if USE_GNUTLS_FALLBACK
 bool Gnss_Crypto::tonelli_shanks(mpz_t& res, const mpz_t& n, const mpz_t& p) const
 {
     if (mpz_legendre(n, p) != 1)
@@ -1598,11 +1499,101 @@ void Gnss_Crypto::decompress_public_key_secp521r1(const std::vector<uint8_t>& co
         }
 
     // Export the x and y coordinates to vectors
-    x.resize(66);
-    y.resize(66);
-    mpz_export(x.data(), nullptr, 1, 1, 1, 0, x_coord);
+    x.resize(66, 0);  // Ensure 66 bytes with leading zeros if necessary
+    y.resize(66, 0);
+    mpz_export(x.data() + 1, nullptr, 1, 1, 1, 0, x_coord);
     mpz_export(y.data(), nullptr, 1, 1, 1, 0, y_coord);
 
     mpz_clears(p, a, b, x_coord, y_coord, y_squared, tmp, nullptr);
 }
+#else  // OpenSSL
+#if USE_OPENSSL_3
+bool Gnss_Crypto::pubkey_copy(EVP_PKEY* src, EVP_PKEY** dest)
+{
+    // Open a memory buffer
+    BIO* mem_bio = BIO_new(BIO_s_mem());
+    if (mem_bio == nullptr)
+        {
+            return false;
+        }
+
+    // Export the public key from src into the memory buffer in PEM format
+    if (!PEM_write_bio_PUBKEY(mem_bio, src))
+        {
+            BIO_free(mem_bio);
+            return false;
+        }
+
+    // Read the data from the memory buffer
+    char* bio_data;
+    int64_t data_len = BIO_get_mem_data(mem_bio, &bio_data);
+
+    // Create a new memory buffer and load the data into it
+    BIO* mem_bio2 = BIO_new_mem_buf(bio_data, data_len);
+    if (mem_bio2 == nullptr)
+        {
+            BIO_free(mem_bio);
+            return false;
+        }
+
+    // Read the public key from the new memory buffer
+    *dest = PEM_read_bio_PUBKEY(mem_bio2, nullptr, nullptr, nullptr);
+    if (*dest == nullptr)
+        {
+            BIO_free(mem_bio);
+            BIO_free(mem_bio2);
+            return false;
+        }
+
+    // Clean up
+    BIO_free(mem_bio);
+    BIO_free(mem_bio2);
+
+    return true;
+}
+#else   // OpenSSL 1.x
+bool Gnss_Crypto::pubkey_copy(EC_KEY* src, EC_KEY** dest)
+{
+    // Open a memory buffer
+    BIO* mem_bio = BIO_new(BIO_s_mem());
+    if (mem_bio == nullptr)
+        {
+            return false;
+        }
+
+    // Export the public key from src into the memory buffer in PEM format
+    if (!PEM_write_bio_EC_PUBKEY(mem_bio, src))
+        {
+            BIO_free(mem_bio);
+            return false;
+        }
+
+    // Read the data from the memory buffer
+    char* bio_data;
+    long data_len = BIO_get_mem_data(mem_bio, &bio_data);
+
+    // Create a new memory buffer and load the data into it
+    BIO* mem_bio2 = BIO_new_mem_buf(bio_data, data_len);
+    if (mem_bio2 == nullptr)
+        {
+            BIO_free(mem_bio);
+            return false;
+        }
+
+    // Read the public key from the new memory buffer
+    *dest = PEM_read_bio_EC_PUBKEY(mem_bio2, nullptr, nullptr, nullptr);
+    if (*dest == nullptr)
+        {
+            BIO_free(mem_bio);
+            BIO_free(mem_bio2);
+            return false;
+        }
+
+    // Clean up
+    BIO_free(mem_bio);
+    BIO_free(mem_bio2);
+
+    return true;
+}
+#endif  // OpenSSL
 #endif

@@ -139,9 +139,17 @@ else()
     set_package_properties(GMP PROPERTIES
         URL "https://gmplib.org/"
         PURPOSE "Required to decompress cryptographic keys."
-        DESCRIPTION "The GNU Multiple Precision Arithmetic Library"
         TYPE REQUIRED
     )
+    if(PC_GMP_VERSION)
+        set_package_properties(GMP PROPERTIES
+            DESCRIPTION "The GNU Multiple Precision Arithmetic Library (found: v.${PC_GMP_VERSION})"
+        )
+    else()
+        set_package_properties(GMP PROPERTIES
+            DESCRIPTION "The GNU Multiple Precision Arithmetic Library"
+        )
+    endif()
     if(NOT GMP_FOUND)
         message(FATAL_ERROR "GMP is required by gnss-sdr if linking against GnuTLS")
     endif()

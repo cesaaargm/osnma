@@ -159,9 +159,9 @@ std::string OSNMA_nav_data_Manager::get_navigation_data(const Tag& tag)
                     else if(tag.ADKD == 4)
                         {
 
-                            if (!tow_it->second.get_utc_data().empty())
+                            if (!tow_it.second.get_utc_data().empty())
                                 {
-                                    return tow_it->second.get_utc_data();
+                                    return tow_it.second.get_utc_data();
                                 }
                         }
                 }

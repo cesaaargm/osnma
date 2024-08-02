@@ -1948,7 +1948,7 @@ std::vector<MACK_tag_and_info> osnma_msg_receiver::verify_macseq_new(const MACK_
         }
 }
 
-void osnma_msg_receiver::send_data_to_pvt(std::vector<OSNMA_NavData> data)
+void osnma_msg_receiver::send_data_to_pvt(const std::vector<OSNMA_NavData>& data)
 {
     if (!data.empty())
         {

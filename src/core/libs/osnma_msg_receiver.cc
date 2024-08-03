@@ -121,17 +121,16 @@ osnma_msg_receiver::osnma_msg_receiver(const std::string& crtFilePath,
     if (d_strict_mode)
         {
             d_GST_Rx = d_helper->compute_gst_now();
-            LOG(INFO) << "Galileo OSNMA: initial receiver time GST=[" << d_WN << " " << d_TOW << "]";
-            std::cout << "Galileo OSNMA: initial receiver time GST=[" << d_WN << " " << d_TOW << "]" << std::endl;
+            const auto WN = d_helper->get_WN(d_GST_Rx);
+            const auto TOW = d_helper->get_TOW(d_GST_Rx);
+            LOG(INFO) << "Galileo OSNMA: initial receiver time GST=[" << WN << " " << TOW << "]";
+            std::cout << "Galileo OSNMA: initial receiver time GST=[" << WN << " " << TOW << "]" << std::endl;
         }
     else
         {
             LOG(WARNING) << "Galileo OSNMA: in non-strict mode, local system time is not checked.";
             std::cout << "Galileo OSNMA: in non-strict mode, local system time is not checked." << std::endl;
         }
-
-    d_WN = d_helper->get_WN(d_GST_Rx);
-    d_TOW = d_helper->get_TOW(d_GST_Rx);
 }
 
 

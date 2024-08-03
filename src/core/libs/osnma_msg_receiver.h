@@ -126,8 +126,6 @@ private:
     uint32_t d_GST_SIS{};                 // GST coming from W6 and W5 of SIS
     uint32_t d_GST_PKR_PKREV_start{};
     uint32_t d_GST_PKR_AM_start{};
-    uint32_t d_WN{};
-    uint32_t d_TOW{};
 
     uint32_t d_count_successful_tags{0};
     uint32_t d_count_failed_tags{0};

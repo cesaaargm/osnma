@@ -142,6 +142,10 @@ target_include_directories(core_system_parameters
         ${GNSSSDR_SOURCE_DIR}/src/algorithms/libs
 )
 
+if(NOT CMAKE_CXX_STANDARD VERSION_LESS 20)
+    target_compile_definitions(core_system_parameters PRIVATE -DUSE_CXX_20=1)
+endif()
+
 # links to the appropriate library and defines
 # USE_GNUTLS_FALLBACK, USE_OPENSSL_3, or USE_OPENSSL_111 accordingly.
 link_to_crypto_dependencies(core_system_parameters)

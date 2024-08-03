@@ -18,10 +18,16 @@
 #define GNSS_SDR_OSNMA_HELPER_H
 
 
-#include <chrono>
 #include <cstdint>
+#include <ctime>
 #include <string>
 #include <vector>
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup System_Parameters
+ * \{ */
+
 class Osnma_Helper
 {
 public:
@@ -30,15 +36,26 @@ public:
     uint32_t compute_gst(uint32_t WN, uint32_t TOW) const;
     uint32_t compute_gst(std::tm& input);
     uint32_t compute_gst_now();
-    uint32_t get_WN(uint32_t GST);
-    uint32_t get_TOW(uint32_t GST);
+    uint32_t get_WN(uint32_t GST) const;
+    uint32_t get_TOW(uint32_t GST) const;
     std::vector<uint8_t> gst_to_uint8(uint32_t GST) const;
     std::vector<uint8_t> bytes(const std::string& binaryString) const;
     std::string verification_status_str(int status) const;
     std::string convert_to_hex_string(const std::vector<uint8_t>& vector) const;
     std::vector<uint8_t> convert_from_hex_string(const std::string& hex_string) const;  // TODO remove similar function in gnss_crypto
 
-    std::tm GST_START_EPOCH = {0, 0, 0, 22, 8 - 1, 1999 - 1900, 0, 0, 0, 0, 0};
+    std::tm GST_START_EPOCH = {
+        .tm_sec = 0,
+        .tm_min = 0,
+        .tm_hour = 0,
+        .tm_mday = 22,
+        .tm_mon = 7,  // August (0-based)
+        .tm_year = 1999 - 1900,
+        .tm_wday = 0,  // Not used
+        .tm_yday = 0,  // Not used
+        .tm_isdst = 0};
 };
 
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_OSNMA_HELPER_H

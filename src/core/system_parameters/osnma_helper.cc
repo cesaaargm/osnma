@@ -46,17 +46,11 @@ uint32_t Osnma_Helper::compute_gst(tm& input)
 
 uint32_t Osnma_Helper::compute_gst_now()
 {
-#if USE_CXX_20
-    auto local_time = std::chrono::current_zone()->to_local(std::chrono::system_clock::now());
-    auto utc_time = std::chrono::clock_cast<std::chrono::utc_clock>(local_time);
-    auto timezone_offset = utc_time - local_time;
-#else
     time_t now = time(nullptr);
-    struct tm local_tm = *localtime(&now);
-    struct tm utc_tm = *gmtime(&now);
-    auto timezone_offset = mktime(&utc_tm) - mktime(&local_tm);
-#endif
-    auto epoch_time_point = std::chrono::system_clock::from_time_t(mktime(&GST_START_EPOCH) - timezone_offset) + std::chrono::seconds(13);
+    struct tm local_tm = *std::localtime(&now);
+    struct tm utc_tm = *std::gmtime(&now);
+    auto timezone_offset = std::mktime(&utc_tm) - std::mktime(&local_tm);
+    auto epoch_time_point = std::chrono::system_clock::from_time_t(std::mktime(&GST_START_EPOCH) - timezone_offset) + std::chrono::seconds(13);
     auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - epoch_time_point);
     const uint32_t sec_in_week = 604800;
     const uint32_t week_number = duration_sec.count() / sec_in_week;

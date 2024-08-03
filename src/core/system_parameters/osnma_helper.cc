@@ -22,6 +22,14 @@
 #include <sstream>
 
 
+Osnma_Helper::Osnma_Helper()
+{
+    GST_START_EPOCH.tm_mday = 22;
+    GST_START_EPOCH.tm_mon = 7;  // August (0-based)
+    GST_START_EPOCH.tm_year = 1999 - 1900;
+}
+
+
 uint32_t Osnma_Helper::compute_gst(uint32_t WN, uint32_t TOW) const
 {
     return (WN & 0x00000FFF) << 20 | (TOW & 0x000FFFFF);

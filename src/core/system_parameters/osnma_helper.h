@@ -31,7 +31,7 @@
 class Osnma_Helper
 {
 public:
-    Osnma_Helper() = default;
+    Osnma_Helper();
     ~Osnma_Helper() = default;
     uint32_t compute_gst(uint32_t WN, uint32_t TOW) const;
     uint32_t compute_gst(std::tm& input);
@@ -43,17 +43,7 @@ public:
     std::string verification_status_str(int status) const;
     std::string convert_to_hex_string(const std::vector<uint8_t>& vector) const;
     std::vector<uint8_t> convert_from_hex_string(const std::string& hex_string) const;  // TODO remove similar function in gnss_crypto
-
-    std::tm GST_START_EPOCH = {
-        .tm_sec = 0,
-        .tm_min = 0,
-        .tm_hour = 0,
-        .tm_mday = 22,
-        .tm_mon = 7,  // August (0-based)
-        .tm_year = 1999 - 1900,
-        .tm_wday = 0,  // Not used
-        .tm_yday = 0,  // Not used
-        .tm_isdst = 0};
+    std::tm GST_START_EPOCH{};
 };
 
 /** \} */

@@ -1172,20 +1172,8 @@ bool Gnss_Crypto::readPublicKeyFromCRT(const std::string& crtFilePath)
 
     if (pk_algorithm == GNUTLS_PK_ECDSA)
         {
-            gnutls_datum_t params;
-            ret = gnutls_pubkey_export_ecc_raw(pubkey, nullptr, &params, nullptr);
-            if (ret < 0)
-                {
-                    LOG(WARNING) << "GnuTLS: Failed to export EC parameters: " << gnutls_strerror(ret);
-                    gnutls_pubkey_deinit(pubkey);
-                    gnutls_x509_crt_deinit(cert);
-                    return false;
-                }
-
             gnutls_ecc_curve_t curve;
-            ret = gnutls_ecc_curve_get_id(reinterpret_cast<const char*>(params.data));
-            gnutls_free(params.data);
-
+            ret = gnutls_pubkey_export_ecc_raw(pubkey, &curve, nullptr, nullptr);
             if (ret < 0)
                 {
                     LOG(WARNING) << "GnuTLS: Failed to get EC curve: " << gnutls_strerror(ret);
@@ -1193,8 +1181,6 @@ bool Gnss_Crypto::readPublicKeyFromCRT(const std::string& crtFilePath)
                     gnutls_x509_crt_deinit(cert);
                     return false;
                 }
-
-            curve = static_cast<gnutls_ecc_curve_t>(ret);
 
             if (curve == GNUTLS_ECC_CURVE_SECP256R1)
                 {

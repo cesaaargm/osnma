@@ -1109,7 +1109,7 @@ void Gnss_Crypto::readPublicKeyFromPEM(const std::string& pemFilePath)
 
     pk_algorithm = static_cast<gnutls_pk_algorithm_t>(ret);
 
-    if (pk_algorithm == GNUTLS_PK_ECDSA)
+    if (pk_algorithm == GNUTLS_PK_ECC)
         {
             gnutls_ecc_curve_t curve;
             ret = gnutls_pubkey_export_ecc_raw(pubkey, &curve, nullptr, nullptr);
@@ -1294,7 +1294,7 @@ bool Gnss_Crypto::readPublicKeyFromCRT(const std::string& crtFilePath)
 
     pk_algorithm = static_cast<gnutls_pk_algorithm_t>(ret);
 
-    if (pk_algorithm == GNUTLS_PK_ECDSA)
+    if (pk_algorithm == GNUTLS_PK_ECC)
         {
             gnutls_ecc_curve_t curve;
             ret = gnutls_pubkey_export_ecc_raw(pubkey, &curve, nullptr, nullptr);

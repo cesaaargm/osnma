@@ -797,7 +797,7 @@ std::string Gnss_Crypto::get_public_key_type() const
 {
     if (d_PublicKeyType.empty())
         {
-            return std::string("Unknown");
+            return {"Unknown"};
         }
     return d_PublicKeyType;
 }

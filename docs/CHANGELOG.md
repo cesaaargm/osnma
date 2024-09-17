@@ -91,6 +91,16 @@ All notable changes to GNSS-SDR will be documented in this file.
   Accordingly, the GNSS-SDR building system now looks for OpenSSL in the first
   place and, if not found, then it looks for GnuTLS as a fallback.
 
+### Reliability
+
+- Implementation of the Galileo Open Service Navigation Message Authentication
+  (OSNMA), a data authentication function for the Galileo Open Service worldwide
+  users, freely accessible to all. OSNMA provides receivers with the assurance
+  that the received Galileo navigation message is coming from the system itself
+  and has not been modified. OSNMA is enabled by default if the receiver
+  configuration defines Galileo E1 OS channels. More details can be found in
+  [Introducing GNSS Navigation Message Authentication](https://gnss-sdr.org/osnma).
+
 ### Improvements in Usability:
 
 - Tidy up the `conf/` folder.
